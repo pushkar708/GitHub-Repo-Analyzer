@@ -211,7 +211,7 @@ def analyze_user_data(owner, profile_data, repos_data, events_data):
     total_open_issues = 0
     total_watchers = 0
     repo_languages_count = defaultdict(int)
-    repo_star_counts = defaultdict(int)
+    repo_star_counts = defaultdict(int) # This holds the stars per repo name
     most_popular_repo = {'name': 'N/A', 'stars': 0, 'forks': 0}
     active_repos = 0
     activity_threshold = (pd.Timestamp.now(tz='UTC') - pd.DateOffset(years=1)).isoformat()
@@ -334,6 +334,7 @@ def analyze_user_data(owner, profile_data, repos_data, events_data):
         'total_watchers': total_watchers,
         'most_popular_repo': most_popular_repo,
         'repo_languages': repo_languages_count,
+        'repo_star_counts': repo_star_counts, # <-- ADDED THIS MISSING KEY
         'detailed_languages_top_repo': detailed_languages,
         'top_repo_data': top_repo_data, # NEW (Topics, Pages, Wiki)
         'repo_commit_activity_df': commit_df, # NEW
