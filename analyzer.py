@@ -75,7 +75,6 @@ def parse_github_url(url):
 @st.cache_data(ttl=3600)
 def fetch_repo_details(owner, repo):
     """Fetches all stargazers for a repository."""
-    # (Existing function, logic omitted for brevity, but remains in the final file)
     star_data = []
     page = 1
     per_page = 100
@@ -150,7 +149,6 @@ def fetch_user_profile(owner):
 @st.cache_data(ttl=3600)
 def fetch_user_repos(owner):
     """Fetches all public repositories owned by the user."""
-    # (Existing function, logic omitted for brevity, but remains in the final file)
     repos_data = []
     page = 1
     per_page = 100
@@ -186,7 +184,6 @@ def fetch_user_events(owner):
 
 def process_star_data(raw_star_data):
     """Converts star data into a cumulative DataFrame for plotting."""
-    # (Existing function, logic omitted for brevity, but remains in the final file)
     if not raw_star_data:
         return pd.DataFrame()
 
@@ -259,8 +256,7 @@ def analyze_user_data(owner, profile_data, repos_data, events_data):
             # NEW: Issue Lifespan (Basic metric: days since creation of oldest open issue)
             oldest_open_issue_days = "N/A"
             if full_top_repo.get('open_issues_count', 0) > 0:
-                # We can't fetch issue details without hitting rate limits, so we use the repo's creation date 
-                # as a proxy for the absolute maximum lifespan of *any* issue/PR.
+                # We use the repo's creation date as a proxy for the absolute maximum lifespan of *any* issue/PR.
                 created_at = pd.to_datetime(full_top_repo.get('created_at'))
                 days_since_creation = (pd.Timestamp.now(tz='UTC') - created_at).days
                 oldest_open_issue_days = days_since_creation
@@ -384,127 +380,173 @@ def generate_activity_level(score):
     else:
         return "Low/Inconsistent Activity 🕰️"
 
-# --- NEW: Markdown Report Generation ---
+# --- NEW: HTML Report Generation for Print-to-PDF ---
 
-def generate_markdown_report(report):
-    """Generates a comprehensive Markdown string from the report data."""
-    md = f"# GitHub Analysis Report: {report['user_id']}\n"
-    md += f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-    md += "---\n\n"
+def generate_html_report(report):
+    """Generates a comprehensive, printable HTML string from the report data."""
+    
+    # Define CSS for clean printing (no backgrounds, optimized layout)
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>GitHub Analysis Report - {report['user_id']}</title>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                color: #333;
+            }}
+            h1, h2, h3 {{ color: #2C3E50; border-bottom: 2px solid #ECF0F1; padding-bottom: 5px; margin-top: 25px; }}
+            .metric-table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; }}
+            .metric-table td {{ padding: 10px; border: 1px solid #ddd; }}
+            .metric-table tr:nth-child(even) {{ background-color: #f9f9f9; }}
+            .metric-table td:first-child {{ font-weight: bold; width: 30%; background-color: #ECF0F1; }}
+            table.data-table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }}
+            table.data-table th, table.data-table td {{ padding: 8px; border: 1px solid #ddd; text-align: left; }}
+            table.data-table th {{ background-color: #3498DB; color: white; }}
+            
+            /* Print Specific Styles */
+            @media print {{
+                body {{ margin: 0; padding: 0; font-size: 10pt; }}
+                h1 {{ font-size: 18pt; }}
+                h2 {{ font-size: 16pt; }}
+                h3 {{ font-size: 14pt; }}
+                /* Force tables to use minimal padding */
+                .metric-table td, table.data-table th, table.data-table td {{ padding: 5px; }}
+                /* Hide any non-essential elements if we had them (like a download button on the page itself) */
+            }}
+        </style>
+        <!-- JavaScript to automatically trigger the print dialog upon opening -->
+        <script>
+            window.onload = function() {{
+                // Wait a moment for the page to fully render before printing
+                setTimeout(function() {{
+                    window.print();
+                    // Optionally close the window after printing (not always reliable)
+                    // window.close(); 
+                }}, 500);
+            }};
+        </script>
+    </head>
+    <body>
+    """
+
+    # --- Header ---
+    html_content += f"<h1>GitHub Analysis Report: {report['user_id']}</h1>"
+    html_content += f"<p><em>Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</em></p>"
+    html_content += "<hr>"
 
     # --- 1. Profile and Core Metrics ---
-    md += "## 1. Profile and Core Metrics\n\n"
-    md += "| Metric | Value |\n| :--- | :--- |\n"
-    md += f"| **Name** | {report['name']} |\n"
-    md += f"| **Hirable Status** | {'Yes' if report['hireable'] else 'No/Unknown'} |\n"
-    md += f"| Location | {report['location']} |\n"
-    md += f"| Member Since | {report['member_since'][:10]} |\n"
-    md += f"| Followers | {report['followers']} |\n"
-    md += f"| Public Repositories | {report['public_repos_count']} |\n"
-    md += f"| **Total Public Gists** | {report['public_gists_count']} |\n"
-    md += f"| Total Stars Owned | {report['total_stars_owned']} |\n"
-    md += f"| Total Forks Owned | {report['total_forks_owned']} |\n"
-    md += f"| Total Open Issues | {report['total_open_issues']} |\n"
-    md += f"| Total Watchers | {report['total_watchers']} |\n"
-    md += f"| Top Language (Repo Count) | {report['top_language']} |\n\n"
+    html_content += "<h2>1. Profile and Core Metrics</h2>"
+    html_content += "<table class='metric-table'>"
+    html_content += f"<tr><td>**Name**</td><td>{report['name']}</td></tr>"
+    html_content += f"<tr><td>**Hirable Status**</td><td>{'Yes' if report['hireable'] else 'No/Unknown'}</td></tr>"
+    html_content += f"<tr><td>Location</td><td>{report['location']}</td></tr>"
+    html_content += f"<tr><td>Member Since</td><td>{report['member_since'][:10]}</td></tr>"
+    html_content += f"<tr><td>Followers</td><td>{report['followers']}</td></tr>"
+    html_content += f"<tr><td>Public Repositories</td><td>{report['public_repos_count']}</td></tr>"
+    html_content += f"<tr><td>Total Stars Owned</td><td>{report['total_stars_owned']}</td></tr>"
+    html_content += f"<tr><td>Total Forks Owned</td><td>{report['total_forks_owned']}</td></tr>"
+    html_content += f"<tr><td>Top Language (Repo Count)</td><td>{report['top_language']}</td></tr>"
+    html_content += "</table>"
     
     # --- 2. Activity Summary ---
-    md += "## 2. Activity and Engagement\n\n"
-    md += f"**Activity Level:** {generate_activity_level(report['recent_activity_score'])}\n"
-    md += f"**Active Commit Time (UTC):** {report['most_active_time']}\n"
-    md += f"**Repos with Recent Activity:** {report['repos_with_recent_activity']}\n\n"
+    html_content += "<h2>2. Activity and Engagement</h2>"
+    html_content += f"<p><strong>Activity Level:</strong> {generate_activity_level(report['recent_activity_score'])}</p>"
+    html_content += f"<p><strong>Active Commit Time (UTC):</strong> {report['most_active_time']}</p>"
+    html_content += f"<p><strong>Repos with Recent Activity:</strong> {report['repos_with_recent_activity']}</p>"
 
-    md += "### Recent Event Types\n"
+    html_content += "<h3>Recent Event Types</h3>"
     event_df = pd.DataFrame(list(report['recent_event_types'].items()), columns=['Event Type', 'Count'])
-    md += event_df.to_markdown(index=False)
-    md += "\n\n"
-
-    # --- 3. Repository Analysis ---
-    md += f"## 3. Repository and Codebase Analysis\n\n"
+    html_content += event_df.to_html(index=False, classes='data-table')
     
-    md += "### Top Starred Repositories\n"
+    # --- 3. Repository Analysis ---
+    html_content += "<h2>3. Repository and Codebase Analysis</h2>"
+    
+    html_content += "<h3>Top Starred Repositories</h3>"
     star_df = pd.DataFrame(list(report['repo_star_counts'].items()), columns=['Repository', 'Stars'])
     star_df = star_df.sort_values('Stars', ascending=False).head(10)
-    md += star_df.to_markdown(index=False)
-    md += "\n\n"
-
-    md += "### Overall Language Distribution (by Repo Count)\n"
+    html_content += star_df.to_html(index=False, classes='data-table')
+    
+    html_content += "<h3>Overall Language Distribution (by Repo Count)</h3>"
     lang_df = pd.DataFrame(list(report['repo_languages'].items()), columns=['Language', 'Count'])
-    md += lang_df.to_markdown(index=False)
-    md += "\n\n"
-
+    html_content += lang_df.to_html(index=False, classes='data-table')
+    
     # --- 4. Deep Dive on Most Popular Repository ---
     top_repo_name = report['most_popular_repo']['name']
-    md += f"## 4. Deep Dive: {top_repo_name}\n\n"
+    html_content += f"<h2>4. Deep Dive: {top_repo_name}</h2>"
     
     # Metadata
-    md += "### Repository Metadata\n"
-    md += "| Metric | Value |\n| :--- | :--- |\n"
-    md += f"| Stars | {report['most_popular_repo']['stars']} |\n"
-    md += f"| Forks | {report['most_popular_repo']['forks']} |\n"
-    md += f"| Has Pages | {'Yes' if report['top_repo_data'].get('has_pages') else 'No'} |\n"
-    md += f"| Has Wiki | {'Yes' if report['top_repo_data'].get('has_wiki') else 'No'} |\n"
-    md += f"| **Estimated Issue Lifespan (Days)** | {report['top_repo_data'].get('oldest_open_issue_lifespan_days', 'N/A')} |\n"
-    md += f"| **Repository Topics** | {', '.join(report['top_repo_data'].get('topics', [])) or 'N/A'} |\n\n"
+    html_content += "<h3>Repository Metadata</h3>"
+    html_content += "<table class='metric-table'>"
+    html_content += f"<tr><td>Stars</td><td>{report['most_popular_repo']['stars']}</td></tr>"
+    html_content += f"<tr><td>Forks</td><td>{report['most_popular_repo']['forks']}</td></tr>"
+    html_content += f"<tr><td>Has Pages</td><td>{'Yes' if report['top_repo_data'].get('has_pages') else 'No'}</td></tr>"
+    html_content += f"<tr><td>Estimated Issue Lifespan (Days)</td><td>{report['top_repo_data'].get('oldest_open_issue_lifespan_days', 'N/A')}</td></tr>"
+    html_content += f"<tr><td>Repository Topics</td><td>{', '.join(report['top_repo_data'].get('topics', [])) or 'N/A'}</td></tr>"
+    html_content += "</table>"
 
     # Detailed Language Breakdown
-    md += "### Detailed Language Breakdown (Code Volume in Bytes)\n"
+    html_content += "<h3>Detailed Language Breakdown (Code Volume in Bytes)</h3>"
     if report['detailed_languages_top_repo']:
         lang_df_detailed = pd.DataFrame(list(report['detailed_languages_top_repo'].items()), columns=['Language', 'Bytes'])
-        md += lang_df_detailed.to_markdown(index=False)
+        html_content += lang_df_detailed.to_html(index=False, classes='data-table')
     else:
-        md += "*No detailed language data available.*\n"
-    md += "\n"
+        html_content += "<p><em>No detailed language data available.</em></p>"
 
     # Contributor Participation
-    md += "### Contributor Participation (Last Year)\n"
+    html_content += "<h3>Contributor Participation (Last Year)</h3>"
     participation = report['repo_participation_stats']
     if participation:
         total_owner = sum(participation.get('owner', []))
         total_all = sum(participation.get('all', []))
         total_others = total_all - total_owner
-        md += f"*Total Commits (All): {total_all}*\n"
-        md += f"*Owner Commits: {total_owner}*\n"
-        md += f"*External Commits: {total_others}*\n\n"
+        html_content += f"<p>Total Commits (All): **{total_all}**</p>"
+        html_content += f"<p>Owner Commits: **{total_owner}**</p>"
+        html_content += f"<p>External Commits: **{total_others}**</p>"
     
     # Commit Activity
-    md += "### Weekly Commit Activity (Data Points)\n"
+    html_content += "<h3>Weekly Commit Activity (Data Points - Last 10 Weeks)</h3>"
     if not report['repo_commit_activity_df'].empty:
-        # Only show a subset for Markdown due to size
-        md += report['repo_commit_activity_df'].tail(10).to_markdown(index=False)
+        html_content += report['repo_commit_activity_df'].tail(10).to_html(index=False, classes='data-table')
     else:
-        md += "*Commit activity data not available.*\n"
-    md += "\n"
+        html_content += "<p><em>Commit activity data not available.</em></p>"
     
     # Code Frequency
-    md += "### Code Frequency (Additions/Deletions Data Points)\n"
+    html_content += "<h3>Code Frequency (Additions/Deletions Data Points - Last 10 Weeks)</h3>"
     if not report['repo_code_frequency_df'].empty:
-        md += report['repo_code_frequency_df'].tail(10).to_markdown(index=False)
+        html_content += report['repo_code_frequency_df'].tail(10).to_html(index=False, classes='data-table')
     else:
-        md += "*Code frequency data not available.*\n"
-    md += "\n"
+        html_content += "<p><em>Code frequency data not available.</em></p>"
 
     # --- 5. Collaboration ---
-    md += "## 5. Collaboration and Organizations\n\n"
-    md += "### Organizations\n"
+    html_content += "<h2>5. Collaboration and Organizations</h2>"
+    html_content += "<h3>Organizations</h3>"
     if report['user_orgs']:
+        html_content += "<ul>"
         for org in report['user_orgs']:
-            md += f"* {org.get('login')}\n"
+            html_content += f"<li>{org.get('login')}</li>"
+        html_content += "</ul>"
     else:
-        md += "*No public organization memberships found.*\n"
-    md += "\n"
+        html_content += "<p><em>No public organization memberships found.</em></p>"
 
-    md += "### Top External Projects Contributed To\n"
+    html_content += "<h3>Top External Projects Contributed To</h3>"
     if report['top_external_projects']:
+        html_content += "<ul>"
         for owner, activity in report['top_external_projects']:
             total = sum(activity.values())
             pushes = activity.get('PushEvent', 0)
             prs = activity.get('PullRequestEvent', 0)
-            md += f"* **{owner}** (Total: {total} events | Pushes: {pushes} | PRs/Issues: {prs})\n"
+            html_content += f"<li>**{owner}** (Total: {total} events | Pushes: {pushes} | PRs/Issues: {prs})</li>"
+        html_content += "</ul>"
     else:
-        md += "*No external contributions detected in recent public events.*\n"
+        html_content += "<p><em>No external contributions detected in recent public events.</em></p>"
+
+    html_content += "</body></html>"
         
-    return md
+    return html_content
 
 # --- 3. STREAMLIT VISUALIZATION FUNCTIONS ---
 
@@ -777,19 +819,19 @@ def display_user_report(report):
     st.markdown("---")
     st.subheader("⬇️ Export Analysis")
     
-    # Generate the Markdown report string
-    report_markdown = generate_markdown_report(report)
+    # Generate the HTML report string
+    report_html = generate_html_report(report)
     
     # Download Button
     st.download_button(
-        label="Download Full Analysis (Markdown)",
-        data=report_markdown,
-        file_name=f"{report['user_id']}_github_analysis_{datetime.now().strftime('%Y%m%d')}.md",
-        mime="text/markdown",
-        help="Downloads a structured Markdown file containing all metrics and underlying data tables."
+        label="Download Full Analysis (Auto-PDF HTML)",
+        data=report_html,
+        file_name=f"{report['user_id']}_github_analysis_{datetime.now().strftime('%Y%m%d')}.html",
+        mime="text/html",
+        help="Downloads a self-contained HTML file. Open this file and your browser will immediately prompt you to save it as a PDF."
     )
     
-    st.info("💡 **Tip for PDF:** To get a PDF file, download the Markdown report above or use your browser's print function (`Ctrl+P` or `Cmd+P`) and choose 'Save as PDF' from the destination settings.")
+    st.info("✅ **PDF Solution:** Click the button above, then **open the downloaded HTML file**. The file contains a script that will automatically launch your browser's **Print dialog**. From there, choose **'Save as PDF'** to get your perfectly formatted report.")
 
 
 # --- 4. MAIN STREAMLIT APPLICATION LOGIC ---
