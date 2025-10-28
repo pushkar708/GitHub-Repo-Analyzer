@@ -1,116 +1,162 @@
-# GitHub Activity and Star Reporter
+# 🔍 GitHub Repository Analyzer Dashboard
 
-## 🌟 Project Status: Complete (Initial Version) ✅
+## 🚀 Project Status: Complete (Streamlit + Gemini Integration) ✅
 
-This project is a functional Python command-line utility for fetching and analyzing public GitHub data from either a user profile or a repository URL.
+This project is an interactive **Streamlit web application** that analyzes GitHub repositories and users, generating detailed insights and AI-powered summaries. It combines **GitHub API analytics**, **data visualization**, and **Gemini AI** for intelligent summaries.
+
+---
 
 ## 💡 Overview
 
-This utility serves as a powerful command-line interface (CLI) tool for fetching and generating detailed statistics from the GitHub API. It operates in two main modes:
+The **GitHub Repository Analyzer Dashboard** allows users to:
 
-1.  **Repository Mode:** Analyzes a given repository URL to provide a time series of its star acquisition history.
+1. **Analyze Repositories:** Visualize repository metrics such as commits, pull requests, issues, stars, and forks over time.  
+2. **Analyze User Profiles:** Get insights into a developer’s activity, repositories, and engagement metrics.  
+3. **Generate AI Summaries:** Automatically produce concise summaries of repository or user performance using **Gemini AI**.  
+4. **Export Reports:** Generate printable and shareable HTML reports for documentation or presentation.
 
-2.  **User Mode:** Analyzes a developer's profile to generate a comprehensive report covering contribution metrics, primary language, overall activity level, and external project involvement, providing a data-driven overview of their GitHub presence.
+---
+
+## ✨ Features
+
+- 📊 **Dynamic Analytics Dashboard:** Real-time stats from the GitHub API.  
+- 🧠 **Gemini AI Summaries:** Intelligent overviews of user or repo data.  
+- 📈 **Visual Metrics:** Interactive charts for commits, stars, forks, and issues.  
+- 🧾 **Printable Reports:** Generate an HTML summary ready for export.  
+- ⚙️ **Rate-Limit Handling:** Retries with exponential backoff for stable API access.  
+- 🧮 **Data Handling:** Efficient data management with Pandas and caching via Streamlit.
+
+---
+
+## 🛠️ Tech Stack
+
+| Category | Technology |
+|-----------|-------------|
+| **Frontend** | [Streamlit](https://streamlit.io) |
+| **Backend API** | [GitHub REST API](https://docs.github.com/en/rest) |
+| **AI Model** | [Gemini API (Google Generative AI)](https://ai.google.dev/) |
+| **Language** | Python 3.8+ |
+| **Libraries** | `requests`, `pandas`, `matplotlib`, `streamlit` |
+| **Environment Management** | `python-dotenv` |
+
+---
+
+## ⚙️ Environment Variables
+
+Create a `.env` file in your project root with:
+
+```
+
+GITHUB_TOKEN=your_github_token_here
+GEMINI_API_KEY=your_gemini_api_key_here
+
+````
+
+You can generate:
+- **GitHub Token:** From [GitHub → Settings → Developer Settings → Personal Access Tokens](https://github.com/settings/tokens)  
+- **Gemini API Key:** From [Google AI Studio](https://aistudio.google.com/)
+
+---
+
+## 🧩 Installation
+
+1. **Clone the Repository**
+
+```bash
+git clone https://github.com/pushkar708/GitHub-Repo-Analyzer.git
+cd GitHub-Repo-Analyzer
+````
+
+2. **Install Dependencies**
+
+```bash
+pip install -r requirements.txt
+```
+
+If you don’t have a `requirements.txt`, install manually:
+
+```bash
+pip install streamlit requests pandas matplotlib python-dotenv
+```
+
+3. **Set Up Environment**
+
+Create a `.env` file in the root directory and add your tokens (as shown above).
+
+---
+
+## 🧠 Usage
+
+Run the Streamlit app:
+
+```bash
+streamlit run app.py
+```
+
+Then open the link shown in your terminal (usually `http://localhost:8501`).
+
+### In the App:
+
+* Enter a **GitHub Repository URL** (e.g., `https://github.com/streamlit/streamlit`)
+* Or enter a **GitHub Username** (e.g., `torvalds`)
+* Wait for the analytics and **AI summary** to generate
+* Optionally, **download or print** the full report
+
+---
+
+## 📊 Sample Output
+
+The dashboard provides:
+
+* Repository metrics (commits, forks, issues, stars)
+* Contributor breakdowns
+* Star growth visualization
+* AI-generated insights (via Gemini)
+* Printable reports with clean formatting
+
+---
+
+## 🎥 Live Demo
 
 <p align="center">
     <video src="https://github.com/user-attachments/assets/8b9efb48-31aa-4e08-aacc-42c613da147d" width="700" controls autoplay muted loop></video>
 </p>
 
-## ✨ Features
+> 🎬 The video above showcases the live working of the Streamlit GitHub Analyzer App.
 
-  * **Repository Star History:** Fetches the complete star history for any public repository, handling API pagination automatically.
+---
 
-  * **Comprehensive User Analysis:** Generates a detailed report on a user's activity, including name, location, followers, and public repository count.
-
-  * **Activity Level Score:** Calculates an overall activity score based on recent events (Pushes, Pull Requests, Issues, etc.) and categorizes it (e.g., Highly Active).
-
-  * **Top Language Identification:** Automatically determines the user's most frequently used programming language across their public repositories.
-
-  * **Most Active Time:** Calculates the user's most active committing hour (based on PushEvents), adjusted to the Asia/Kolkata timezone.
-
-  * **External Contribution Tracking:** Identifies and summarizes contributions (Pushes, Pull Requests) made to projects outside of the user's ownership.
-
-  * **Data Processing:** Uses the **Pandas** library for efficient time series and data manipulation.
-
-## 🛠️ Tech Stack
-
-This project is built using the following technologies:
-
-| Category | Technology |
-| ----- | ----- |
-| **Language** | **Python 3.x** |
-| **API Calls** | `requests` |
-| **Data Analysis** | `pandas` |
-| **Configuration** | `python-dotenv` |
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-You must have the following installed on your machine:
-
-  * **Python 3.8+**
-
-  * A **GitHub Personal Access Token** (Highly recommended to avoid strict API rate limiting, even for public data).
-
-### Installation
-
-1.  **Clone the repository:**
-
-    ```
-    git clone https://github.com/pushkar708/GitHub-Repo-Analyzer.git
-    cd GitHub-Repo-Analyzer
-
-    ```
-
-2.  **Install dependencies:**
-
-    ```
-    pip install requests pandas python-dotenv
-
-    ```
-
-3.  **Setup Authentication (.env):**
-    The script requires a GitHub token to function correctly. Create a file named **`.env`** in the root directory and add your token:
-
-    ```
-    GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
-    ```
-
-    (Note: Replace the placeholder value with your actual token.)
-
-### Usage
-
-Run the main script and enter the target GitHub URL when prompted:
+## 🧱 Project Structure
 
 ```
-python analyzer.py
-
+GitHub-Repo-Analyzer/
+│
+├── app.py                # Main Streamlit application
+├── .env                  # API keys (GitHub & Gemini)
+├── requirements.txt       # Dependencies
+└── README.md              # Documentation
 ```
 
-**Example Interactions:**
-
-  * To analyze a **repository**: Enter `https://github.com/requests/requests`
-
-  * To analyze a **user profile**: Enter `https://github.com/torvalds`
+---
 
 ## 🤝 Contributing
 
-We welcome contributions\! If you have suggestions or want to report a bug, please open an issue first. If you'd like to submit a patch:
+Contributions are welcome!
 
-1.  Fork the repository.
+1. Fork this repository
+2. Create a new branch: `git checkout -b feature/add-improvement`
+3. Make your changes and commit: `git commit -m "Add new visualization"`
+4. Push the branch: `git push origin feature/add-improvement`
+5. Open a Pull Request 🎉
 
-2.  Create a new branch (`git checkout -b feature/add-time-filtering`).
+---
 
-3.  Commit your changes (`git commit -m 'Feat: Allow filtering star history by date range'`).
+## 📜 License
 
-4.  Push to the branch (`git push origin feature/add-time-filtering`).
+Distributed under the **MIT License**.
+See `LICENSE` for more information.
 
-5.  Open a Pull Request.
+---
 
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
-*Project created by \[Pushkar Agarwal\].*
+**Project by [Pushkar Agarwal](https://github.com/pushkar708)**
+Built with ❤️ using Streamlit, GitHub API, and Gemini AI.
