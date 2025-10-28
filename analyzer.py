@@ -109,7 +109,7 @@ def fetch_repo_languages(owner, repo):
 @st.cache_data(ttl=3600)
 def fetch_repo_stats(owner, repo):
     """
-    NEW: Fetches heavy repository statistics (commit activity, code frequency, participation).
+    Fetches heavy repository statistics (commit activity, code frequency, participation).
     """
     base_url = f"https://api.github.com/repos/{owner}/{repo}/stats/"
     stats = {}
@@ -134,7 +134,7 @@ def fetch_repo_stats(owner, repo):
 
 @st.cache_data(ttl=3600)
 def fetch_user_orgs(owner):
-    """NEW: Fetches public organization memberships for a user."""
+    """Fetches public organization memberships for a user."""
     url = f"https://api.github.com/users/{owner}/orgs"
     response = _make_github_request(url)
     return response.json() if response else None
@@ -241,7 +241,7 @@ def analyze_user_data(owner, profile_data, repos_data, events_data):
         if repo.get('pushed_at', '1970-01-01T00:00:00Z') > activity_threshold:
             active_repos += 1
 
-    # --- NEW: Top Repo Deep Dive Data Fetching ---
+    # --- Top Repo Deep Dive Data Fetching ---
     detailed_languages = None
     repo_stats = None
     top_repo_data = {}
@@ -256,6 +256,16 @@ def analyze_user_data(owner, profile_data, repos_data, events_data):
             top_repo_data['topics'] = full_top_repo.get('topics', [])
             top_repo_data['has_pages'] = full_top_repo.get('has_pages', False)
             top_repo_data['has_wiki'] = full_top_repo.get('has_wiki', False)
+            # NEW: Issue Lifespan (Basic metric: days since creation of oldest open issue)
+            oldest_open_issue_days = "N/A"
+            if full_top_repo.get('open_issues_count', 0) > 0:
+                # We can't fetch issue details without hitting rate limits, so we use the repo's creation date 
+                # as a proxy for the absolute maximum lifespan of *any* issue/PR.
+                created_at = pd.to_datetime(full_top_repo.get('created_at'))
+                days_since_creation = (pd.Timestamp.now(tz='UTC') - created_at).days
+                oldest_open_issue_days = days_since_creation
+            top_repo_data['oldest_open_issue_lifespan_days'] = oldest_open_issue_days
+
 
         # 1. Detailed Language Breakdown (bytes)
         detailed_languages = fetch_repo_languages(owner, top_repo_name)
@@ -283,7 +293,7 @@ def analyze_user_data(owner, profile_data, repos_data, events_data):
                 })
             code_df = pd.DataFrame(data)
 
-    # NEW: User Organizations
+    # User Organizations
     user_orgs = fetch_user_orgs(owner)
     
     # --- Event Analysis (Recent Activity) ---
@@ -322,25 +332,25 @@ def analyze_user_data(owner, profile_data, repos_data, events_data):
     report = {
         'user_id': profile_data.get('login'),
         'name': profile_data.get('name', 'N/A'),
-        'hireable': profile_data.get('hireable', False), # NEW
+        'hireable': profile_data.get('hireable', False),
         'location': profile_data.get('location', 'N/A'),
         'member_since': profile_data.get('created_at', 'N/A'),
         'followers': profile_data.get('followers', 0),
         'public_repos_count': profile_data.get('public_repos', 0),
-        'public_gists_count': profile_data.get('public_gists', 0), # NEW
+        'public_gists_count': profile_data.get('public_gists', 0),
         'total_stars_owned': total_stars_gained,
         'total_forks_owned': total_forks_gained,
         'total_open_issues': total_open_issues,
         'total_watchers': total_watchers,
         'most_popular_repo': most_popular_repo,
         'repo_languages': repo_languages_count,
-        'repo_star_counts': repo_star_counts, # <-- ADDED THIS MISSING KEY
+        'repo_star_counts': repo_star_counts,
         'detailed_languages_top_repo': detailed_languages,
-        'top_repo_data': top_repo_data, # NEW (Topics, Pages, Wiki)
-        'repo_commit_activity_df': commit_df, # NEW
-        'repo_code_frequency_df': code_df, # NEW
-        'repo_participation_stats': repo_stats['participation'] if repo_stats and 'participation' in repo_stats else None, # NEW
-        'user_orgs': user_orgs, # NEW
+        'top_repo_data': top_repo_data,
+        'repo_commit_activity_df': commit_df,
+        'repo_code_frequency_df': code_df,
+        'repo_participation_stats': repo_stats['participation'] if repo_stats and 'participation' in repo_stats else None,
+        'user_orgs': user_orgs,
         'top_language': max(repo_languages_count.items(), key=operator.itemgetter(1))[0] if repo_languages_count else 'N/A',
         'repos_with_recent_activity': active_repos,
         'recent_activity_score': recent_activity_score,
@@ -374,6 +384,127 @@ def generate_activity_level(score):
     else:
         return "Low/Inconsistent Activity 🕰️"
 
+# --- NEW: Markdown Report Generation ---
+
+def generate_markdown_report(report):
+    """Generates a comprehensive Markdown string from the report data."""
+    md = f"# GitHub Analysis Report: {report['user_id']}\n"
+    md += f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+    md += "---\n\n"
+
+    # --- 1. Profile and Core Metrics ---
+    md += "## 1. Profile and Core Metrics\n\n"
+    md += "| Metric | Value |\n| :--- | :--- |\n"
+    md += f"| **Name** | {report['name']} |\n"
+    md += f"| **Hirable Status** | {'Yes' if report['hireable'] else 'No/Unknown'} |\n"
+    md += f"| Location | {report['location']} |\n"
+    md += f"| Member Since | {report['member_since'][:10]} |\n"
+    md += f"| Followers | {report['followers']} |\n"
+    md += f"| Public Repositories | {report['public_repos_count']} |\n"
+    md += f"| **Total Public Gists** | {report['public_gists_count']} |\n"
+    md += f"| Total Stars Owned | {report['total_stars_owned']} |\n"
+    md += f"| Total Forks Owned | {report['total_forks_owned']} |\n"
+    md += f"| Total Open Issues | {report['total_open_issues']} |\n"
+    md += f"| Total Watchers | {report['total_watchers']} |\n"
+    md += f"| Top Language (Repo Count) | {report['top_language']} |\n\n"
+    
+    # --- 2. Activity Summary ---
+    md += "## 2. Activity and Engagement\n\n"
+    md += f"**Activity Level:** {generate_activity_level(report['recent_activity_score'])}\n"
+    md += f"**Active Commit Time (UTC):** {report['most_active_time']}\n"
+    md += f"**Repos with Recent Activity:** {report['repos_with_recent_activity']}\n\n"
+
+    md += "### Recent Event Types\n"
+    event_df = pd.DataFrame(list(report['recent_event_types'].items()), columns=['Event Type', 'Count'])
+    md += event_df.to_markdown(index=False)
+    md += "\n\n"
+
+    # --- 3. Repository Analysis ---
+    md += f"## 3. Repository and Codebase Analysis\n\n"
+    
+    md += "### Top Starred Repositories\n"
+    star_df = pd.DataFrame(list(report['repo_star_counts'].items()), columns=['Repository', 'Stars'])
+    star_df = star_df.sort_values('Stars', ascending=False).head(10)
+    md += star_df.to_markdown(index=False)
+    md += "\n\n"
+
+    md += "### Overall Language Distribution (by Repo Count)\n"
+    lang_df = pd.DataFrame(list(report['repo_languages'].items()), columns=['Language', 'Count'])
+    md += lang_df.to_markdown(index=False)
+    md += "\n\n"
+
+    # --- 4. Deep Dive on Most Popular Repository ---
+    top_repo_name = report['most_popular_repo']['name']
+    md += f"## 4. Deep Dive: {top_repo_name}\n\n"
+    
+    # Metadata
+    md += "### Repository Metadata\n"
+    md += "| Metric | Value |\n| :--- | :--- |\n"
+    md += f"| Stars | {report['most_popular_repo']['stars']} |\n"
+    md += f"| Forks | {report['most_popular_repo']['forks']} |\n"
+    md += f"| Has Pages | {'Yes' if report['top_repo_data'].get('has_pages') else 'No'} |\n"
+    md += f"| Has Wiki | {'Yes' if report['top_repo_data'].get('has_wiki') else 'No'} |\n"
+    md += f"| **Estimated Issue Lifespan (Days)** | {report['top_repo_data'].get('oldest_open_issue_lifespan_days', 'N/A')} |\n"
+    md += f"| **Repository Topics** | {', '.join(report['top_repo_data'].get('topics', [])) or 'N/A'} |\n\n"
+
+    # Detailed Language Breakdown
+    md += "### Detailed Language Breakdown (Code Volume in Bytes)\n"
+    if report['detailed_languages_top_repo']:
+        lang_df_detailed = pd.DataFrame(list(report['detailed_languages_top_repo'].items()), columns=['Language', 'Bytes'])
+        md += lang_df_detailed.to_markdown(index=False)
+    else:
+        md += "*No detailed language data available.*\n"
+    md += "\n"
+
+    # Contributor Participation
+    md += "### Contributor Participation (Last Year)\n"
+    participation = report['repo_participation_stats']
+    if participation:
+        total_owner = sum(participation.get('owner', []))
+        total_all = sum(participation.get('all', []))
+        total_others = total_all - total_owner
+        md += f"*Total Commits (All): {total_all}*\n"
+        md += f"*Owner Commits: {total_owner}*\n"
+        md += f"*External Commits: {total_others}*\n\n"
+    
+    # Commit Activity
+    md += "### Weekly Commit Activity (Data Points)\n"
+    if not report['repo_commit_activity_df'].empty:
+        # Only show a subset for Markdown due to size
+        md += report['repo_commit_activity_df'].tail(10).to_markdown(index=False)
+    else:
+        md += "*Commit activity data not available.*\n"
+    md += "\n"
+    
+    # Code Frequency
+    md += "### Code Frequency (Additions/Deletions Data Points)\n"
+    if not report['repo_code_frequency_df'].empty:
+        md += report['repo_code_frequency_df'].tail(10).to_markdown(index=False)
+    else:
+        md += "*Code frequency data not available.*\n"
+    md += "\n"
+
+    # --- 5. Collaboration ---
+    md += "## 5. Collaboration and Organizations\n\n"
+    md += "### Organizations\n"
+    if report['user_orgs']:
+        for org in report['user_orgs']:
+            md += f"* {org.get('login')}\n"
+    else:
+        md += "*No public organization memberships found.*\n"
+    md += "\n"
+
+    md += "### Top External Projects Contributed To\n"
+    if report['top_external_projects']:
+        for owner, activity in report['top_external_projects']:
+            total = sum(activity.values())
+            pushes = activity.get('PushEvent', 0)
+            prs = activity.get('PullRequestEvent', 0)
+            md += f"* **{owner}** (Total: {total} events | Pushes: {pushes} | PRs/Issues: {prs})\n"
+    else:
+        md += "*No external contributions detected in recent public events.*\n"
+        
+    return md
 
 # --- 3. STREAMLIT VISUALIZATION FUNCTIONS ---
 
@@ -420,12 +551,12 @@ def display_user_report(report):
         st.header(f"{report['name']}")
         st.markdown(f"**Member Since:** {report['member_since'][:10]}")
         st.markdown(f"**Location:** {report['location']}")
-        st.markdown(f"**Hirable:** {'Yes' if report['hireable'] else 'No/Unknown'} 💼") # NEW METRIC
+        st.markdown(f"**Hirable:** {'Yes' if report['hireable'] else 'No/Unknown'} 💼")
 
         st.markdown("---")
         st.metric("Followers", report['followers'])
         st.metric("Public Repositories", report['public_repos_count'])
-        st.metric("Public Gists", report['public_gists_count'], help="Total public code snippets (Gists) owned.") # NEW METRIC
+        st.metric("Total Public Gists", report['public_gists_count'], help="Total public code snippets (Gists) owned.")
         st.markdown("---")
         st.metric("Top Language", report['top_language'])
 
@@ -502,12 +633,17 @@ def display_user_report(report):
     if report['top_repo_data']:
         st.markdown(f"### Repository Metadata")
         topics_str = ", ".join([f"`{t}`" for t in report['top_repo_data'].get('topics', [])])
-        st.markdown(f"""
-        - **Topics:** {topics_str or 'N/A'}
+        
+        m_col1, m_col2 = st.columns(2)
+        m_col1.markdown(f"""
         - **GitHub Pages:** {':green[Active] ✅' if report['top_repo_data']['has_pages'] else ':red[Inactive] ❌'}
         - **Wiki Enabled:** {':green[Yes] ✅' if report['top_repo_data']['has_wiki'] else ':red[No] ❌'}
         """)
-    
+        m_col2.metric("Est. Oldest Issue Lifespan (Days)", report['top_repo_data'].get('oldest_open_issue_lifespan_days', 'N/A'), 
+                      help="Max days an open issue/PR could have existed, based on repo creation.")
+        
+        st.markdown(f"**Repository Topics:** {topics_str or 'N/A'}")
+        
     col_code_1, col_code_2 = st.columns(2)
 
     # Detailed Language Breakdown Chart
@@ -636,6 +772,25 @@ def display_user_report(report):
             color_discrete_sequence=['#2ca02c']
         )
         st.plotly_chart(time_fig, use_container_width=True)
+        
+    # --- Export Section ---
+    st.markdown("---")
+    st.subheader("⬇️ Export Analysis")
+    
+    # Generate the Markdown report string
+    report_markdown = generate_markdown_report(report)
+    
+    # Download Button
+    st.download_button(
+        label="Download Full Analysis (Markdown)",
+        data=report_markdown,
+        file_name=f"{report['user_id']}_github_analysis_{datetime.now().strftime('%Y%m%d')}.md",
+        mime="text/markdown",
+        help="Downloads a structured Markdown file containing all metrics and underlying data tables."
+    )
+    
+    st.info("💡 **Tip for PDF:** To get a PDF file, download the Markdown report above or use your browser's print function (`Ctrl+P` or `Cmd+P`) and choose 'Save as PDF' from the destination settings.")
+
 
 # --- 4. MAIN STREAMLIT APPLICATION LOGIC ---
 
