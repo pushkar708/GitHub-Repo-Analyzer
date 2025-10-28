@@ -12,6 +12,10 @@ This utility serves as a powerful command-line interface (CLI) tool for fetching
 
 2.  **User Mode:** Analyzes a developer's profile to generate a comprehensive report covering contribution metrics, primary language, overall activity level, and external project involvement, providing a data-driven overview of their GitHub presence.
 
+<p align="center">
+    <video src="YOUR_GITHUB_ASSET_URL_HERE" width="700" controls autoplay muted loop></video>
+</p>
+
 ## ✨ Features
 
   * **Repository Star History:** Fetches the complete star history for any public repository, handling API pagination automatically.
